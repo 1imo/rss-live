@@ -1,0 +1,134 @@
+{
+  "name": "NewsHub - Latest News Aggregator",
+  "short_name": "NewsHub",
+  "description": "Stay informed with breaking news from trusted sources worldwide. Get the latest updates on politics, business, technology, science, sports and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1f2937",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["news", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-1.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "NewsHub desktop view showing latest articles"
+    },
+    {
+      "src": "/screenshots/mobile-1.jpg",
+      "sizes": "360x640",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "NewsHub mobile view with article cards"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Latest News",
+      "short_name": "Latest",
+      "description": "View the latest breaking news",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icons/news-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Search News",
+      "short_name": "Search",
+      "description": "Search through news articles",
+      "url": "/search",
+      "icons": [
+        {
+          "src": "/icons/search-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "short_name": "Categories",
+      "description": "Browse news by category",
+      "url": "/categories",
+      "icons": [
+        {
+          "src": "/icons/category-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Technology News",
+      "short_name": "Tech",
+      "description": "Latest technology news",
+      "url": "/category/technology",
+      "icons": [
+        {
+          "src": "/icons/tech-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+newshub",
+      "url": "/share?url=%s"
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

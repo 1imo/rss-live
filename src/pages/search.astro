@@ -1,0 +1,328 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ArticleCard from '../components/ArticleCard.astro';
+import { newsService } from '../services/NewsService';
+import { newsCategories } from '../config/newsCategories';
+
+// Get search query from URL parameters
+const url = Astro.url;
+const query = url.searchParams.get('q') || '';
+const category = url.searchParams.get('category') || 'all';
+
+// Perform search if query is provided
+let searchResults = [];
+let searchPerformed = false;
+
+if (query && query.trim().length > 0) {
+  searchResults = await newsService.searchArticles(query);
+  searchPerformed = true;
+
+  // Filter by category if specified
+  if (category !== 'all') {
+    searchResults = searchResults.filter(article => article.category === category);
+  }
+}
+
+// Get recent articles for suggestions when no search is performed
+const recentArticles = searchPerformed ? [] : await newsService.getLatestArticles(12);
+
+const pageTitle = query ? `Search Results for "${query}" — NewsHub` : 'Search News — NewsHub';
+const pageDescription = query
+  ? `Search results for "${query}". Found ${searchResults.length} articles.`
+  : 'Search through thousands of news articles from trusted sources worldwide.';
+---
+
+<Layout
+  title={pageTitle}
+  description={pageDescription}
+>
+  <!-- Search Hero Section -->
+  <section class="bg-white dark:bg-times-950 border-b border-times-200 dark:border-times-800">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="text-center mb-8">
+        <h1 class="text-4xl lg:text-5xl font-display font-bold text-times-900 dark:text-white mb-4">
+          {query ? `Search Results` : 'Search News'}
+        </h1>
+        {query && (
+          <p class="text-xl text-times-600 dark:text-times-400 mb-2">
+            Results for "<span class="font-semibold text-times-900 dark:text-white">{query}</span>"
+          </p>
+        )}
+        <p class="text-times-500 dark:text-times-400">
+          {searchPerformed
+            ? `Found ${searchResults.length} ${searchResults.length === 1 ? 'article' : 'articles'}`
+            : 'Search through thousands of articles from trusted news sources'
+          }
+        </p>
+      </div>
+
+      <!-- Search Form -->
+      <form class="max-w-2xl mx-auto" method="GET" action="/search">
+        <div class="flex flex-col sm:flex-row gap-4">
+          <!-- Search Input -->
+          <div class="flex-1">
+            <label for="search-input" class="sr-only">Search articles</label>
+            <div class="relative">
+              <input
+                type="text"
+                id="search-input"
+                name="q"
+                value={query}
+                placeholder="Search articles, topics, or sources..."
+                class="w-full pl-12 pr-4 py-4 border border-times-300 dark:border-times-600 rounded-lg bg-white dark:bg-times-800 text-times-900 dark:text-white placeholder-times-500 dark:placeholder-times-400 focus:ring-2 focus:ring-times-500 focus:border-transparent text-lg"
+                autocomplete="off"
+                required
+              />
+              <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-times-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Category Filter -->
+          <div>
+            <label for="category-select" class="sr-only">Filter by category</label>
+            <select
+              id="category-select"
+              name="category"
+              class="px-4 py-4 border border-times-300 dark:border-times-600 rounded-lg bg-white dark:bg-times-800 text-times-900 dark:text-white focus:ring-2 focus:ring-times-500 focus:border-transparent min-w-[140px]"
+            >
+              <option value="all" selected={category === 'all'}>All Categories</option>
+              {newsCategories.map(cat => (
+                <option value={cat.id} selected={category === cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <!-- Search Button -->
+          <button
+            type="submit"
+            class="px-8 py-4 bg-times-900 text-white font-semibold rounded-lg hover:bg-times-700 focus:outline-none focus:ring-2 focus:ring-times-500 focus:ring-offset-2 transition-colors dark:bg-times-100 dark:text-times-900 dark:hover:bg-times-300"
+          >
+            Search
+          </button>
+        </div>
+
+        <!-- Search Tips -->
+        <div class="mt-4 text-center">
+          <p class="text-sm text-times-500 dark:text-times-400">
+            Try searching for topics like "technology", "climate change", or specific sources
+          </p>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Search Results -->
+  {searchPerformed && (
+    <section class="bg-white dark:bg-times-950">
+      <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {searchResults.length > 0 ? (
+          <>
+            <!-- Results Header -->
+            <div class="flex items-center justify-between mb-8">
+              <h2 class="text-2xl font-display font-bold text-times-900 dark:text-white">
+                Search Results
+              </h2>
+              <div class="flex items-center space-x-4 text-sm text-times-600 dark:text-times-400">
+                <span>
+                  Showing {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'}
+                </span>
+                {category !== 'all' && (
+                  <span class="px-3 py-1 bg-accent-100 dark:bg-accent-900 text-accent-700 dark:text-accent-300 rounded-full font-medium">
+                    {newsCategories.find(cat => cat.id === category)?.name || category}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <!-- Results Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {searchResults.map((article) => (
+                <ArticleCard
+                  article={article}
+                  showImage={true}
+                  showDescription={true}
+                />
+              ))}
+            </div>
+
+            <!-- Search within results -->
+            <div class="mt-12 pt-8 border-t border-times-200 dark:border-times-800">
+              <div class="text-center">
+                <h3 class="text-lg font-semibold text-times-900 dark:text-white mb-4">
+                  Didn't find what you're looking for?
+                </h3>
+                <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                  <a
+                    href="/search"
+                    class="px-6 py-3 bg-times-100 dark:bg-times-800 text-times-900 dark:text-white rounded-lg hover:bg-times-200 dark:hover:bg-times-700 transition-colors"
+                  >
+                    Try a new search
+                  </a>
+                  <a
+                    href="/categories"
+                    class="px-6 py-3 border border-times-300 dark:border-times-600 text-times-700 dark:text-times-300 rounded-lg hover:bg-times-50 dark:hover:bg-times-800 transition-colors"
+                  >
+                    Browse categories
+                  </a>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <!-- No Results -->
+          <div class="text-center py-16">
+            <div class="max-w-md mx-auto">
+              <svg class="w-16 h-16 text-times-400 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <h2 class="text-2xl font-display font-bold text-times-900 dark:text-white mb-4">
+                No results found
+              </h2>
+              <p class="text-times-600 dark:text-times-400 mb-8">
+                We couldn't find any articles matching "{query}". Try adjusting your search terms or browsing our categories.
+              </p>
+              <div class="space-y-4">
+                <div class="text-sm text-times-500 dark:text-times-400 mb-4">
+                  <strong>Search tips:</strong>
+                  <ul class="list-disc list-inside mt-2 space-y-1">
+                    <li>Try different keywords or synonyms</li>
+                    <li>Use broader terms (e.g., "tech" instead of "artificial intelligence")</li>
+                    <li>Check spelling and try removing filters</li>
+                  </ul>
+                </div>
+                <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                  <a
+                    href="/search"
+                    class="px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
+                  >
+                    Try a new search
+                  </a>
+                  <a
+                    href="/categories"
+                    class="px-6 py-3 border border-times-300 dark:border-times-600 text-times-700 dark:text-times-300 rounded-lg hover:bg-times-50 dark:hover:bg-times-800 transition-colors"
+                  >
+                    Browse all categories
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  )}
+
+  <!-- Recent Articles / Suggestions -->
+  {!searchPerformed && recentArticles.length > 0 && (
+    <section class="bg-times-50 dark:bg-times-950">
+      <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="mb-8">
+          <h2 class="text-2xl font-display font-bold text-times-900 dark:text-white mb-4">
+            Recent Articles
+          </h2>
+          <p class="text-times-600 dark:text-times-400">
+            Discover what's trending while you decide what to search for
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {recentArticles.map((article) => (
+            <ArticleCard
+              article={article}
+              showImage={true}
+              showDescription={true}
+            />
+          ))}
+        </div>
+
+        <div class="text-center mt-8">
+          <a
+            href="/"
+            class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-times-900 dark:bg-white dark:text-times-900 hover:bg-times-800 dark:hover:bg-times-100 transition-colors"
+          >
+            View more articles
+            <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Popular Searches -->
+  <section class="bg-white dark:bg-times-950 border-t border-times-200 dark:border-times-800">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="text-center">
+        <h2 class="text-xl font-display font-bold text-times-900 dark:text-white mb-6">
+          Popular Searches
+        </h2>
+        <div class="flex flex-wrap justify-center gap-3">
+          {[
+            'Technology', 'Climate Change', 'Elections', 'Economy', 'Healthcare',
+            'Sports', 'Entertainment', 'Science', 'Business', 'International'
+          ].map((topic) => (
+            <a
+              href={`/search?q=${encodeURIComponent(topic)}`}
+              class="px-4 py-2 bg-times-100 dark:bg-times-800 text-times-700 dark:text-times-300 rounded-full text-sm font-medium hover:bg-times-200 dark:hover:bg-times-700 transition-colors"
+            >
+              {topic}
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  // Auto-focus search input on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('search-input');
+    if (searchInput && !searchInput.value) {
+      searchInput.focus();
+    }
+  });
+
+  // Search suggestions (could be expanded with real-time search)
+  const searchForm = document.querySelector('form');
+  const searchInput = document.getElementById('search-input');
+
+  searchForm?.addEventListener('submit', (e) => {
+    const query = searchInput?.value?.trim();
+    if (!query) {
+      e.preventDefault();
+      alert('Please enter a search term');
+    }
+  });
+
+  // Clear search
+  const clearSearch = () => {
+    if (searchInput) {
+      searchInput.value = '';
+      searchInput.focus();
+    }
+  };
+</script>
+
+<style>
+  /* Search input focus effects */
+  #search-input:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  /* Results highlighting */
+  .search-highlight {
+    background-color: rgba(59, 130, 246, 0.2);
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+  }
+
+  .dark .search-highlight {
+    background-color: rgba(59, 130, 246, 0.3);
+  }
+</style>

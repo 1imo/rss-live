@@ -1,0 +1,614 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+import { newsService } from '../../services/NewsService';
+import { getCategoryById } from '../../config/newsCategories';
+
+// Generate static paths for all articles
+export async function getStaticPaths() {
+  const articles = await newsService.getArticles();
+  return articles.map((article) => ({
+    params: { slug: article.slug }
+  }));
+}
+
+// Get slug from URL parameters
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/404');
+}
+
+// Get the article by slug
+const article = await newsService.getArticleBySlug(slug);
+
+if (!article) {
+  return Astro.redirect('/404');
+}
+
+// Get related articles
+const relatedArticles = await newsService.getRelatedArticles(article, 6);
+
+// Get category info
+const categoryInfo = getCategoryById(article.category);
+
+// Format publication date
+const pubDate = new Date(article.pubDate);
+const formattedDate = pubDate.toLocaleDateString('en-US', {
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+});
+const formattedTime = pubDate.toLocaleTimeString('en-US', {
+  hour: 'numeric',
+  minute: '2-digit'
+});
+
+const pageTitle = `${article.title} — NewsHub`;
+const pageDescription = article.description || article.content.substring(0, 160) + '...';
+
+// Enhanced news metadata
+const newsKeywords = article.newsKeywords?.join(', ') || article.tags.join(', ');
+// SEO author (for meta tags and structured data)
+const seoAuthorName = "Timo Hoyland";
+// Display author (for UI - keep original author or source for display)
+const displayAuthor = article.author || article.source;
+const newsLocation = article.location || "Global";
+const newsUrgency = article.urgency || "normal";
+---
+
+<Layout
+  title={pageTitle}
+  description={pageDescription}
+  type="article"
+  publishedTime={article.pubDate}
+  author={seoAuthorName}
+  image={article.image}
+  canonical={`/news/${article.slug}`}
+>
+
+  <!-- News-specific meta tags in head -->
+  <Fragment slot="head">
+    <!-- News-specific meta tags for better ranking -->
+    <meta name="news_keywords" content={newsKeywords} />
+    <meta name="geo.placename" content={newsLocation} />
+    <meta name="article:author" content={seoAuthorName} />
+    <meta name="article:published_time" content={article.pubDate} />
+    <meta name="article:modified_time" content={article.pubDate} />
+    <meta name="article:section" content={categoryInfo?.name || article.category} />
+    <meta name="article:tag" content={article.tags.join(', ')} />
+    
+    <!-- Google News specific -->
+    <meta name="syndication-source" content={article.originalSource || article.source} />
+    <meta name="original-source" content={article.link} />
+    <meta name="news-priority" content={newsUrgency === 'breaking' ? 'high' : 'normal'} />
+    
+    <!-- Enhanced structured data for news -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      "headline": article.title,
+      "image": article.image || `${Astro.site}favicon.svg`,
+      "author": {
+        "@type": "Person",
+        "name": seoAuthorName,
+        "url": `${Astro.site}about`
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "NewsHub",
+        "logo": {
+          "@type": "ImageObject",
+          "url": `${Astro.site}favicon.svg`
+        }
+      },
+      "datePublished": article.pubDate,
+      "dateModified": article.pubDate,
+      "description": pageDescription,
+      "articleSection": categoryInfo?.name || article.category,
+      "keywords": newsKeywords,
+      "wordCount": article.content.split(' ').length,
+      "articleBody": article.content,
+      "url": `${Astro.site}news/${article.slug}`,
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": `${Astro.site}news/${article.slug}`
+      },
+      "speakable": {
+        "@type": "SpeakableSpecification",
+        "cssSelector": ["h1", ".article-content"]
+      },
+      ...(article.location && {
+        "contentLocation": {
+          "@type": "Place",
+          "name": article.location
+        }
+      }),
+      "creditText": article.creditLine || `Originally published by ${article.source}`,
+      "copyrightHolder": {
+        "@type": "Organization",
+        "name": "NewsHub"
+      }
+    })} />
+  </Fragment>
+  <!-- Breadcrumbs -->
+  <nav class="bg-times-50 dark:bg-times-950 border-b border-times-200 dark:border-times-800" aria-label="Breadcrumb">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <ol class="flex items-center space-x-2 text-sm">
+        <li>
+          <a href="/" class="text-times-500 dark:text-times-400 hover:text-times-700 dark:hover:text-times-300 transition-colors">
+            Home
+          </a>
+        </li>
+        <li>
+          <svg class="w-4 h-4 text-times-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+          </svg>
+        </li>
+        {categoryInfo && (
+          <>
+            <li>
+              <a href={`/category/${article.category}`} class="text-times-500 dark:text-times-400 hover:text-times-700 dark:hover:text-times-300 transition-colors">
+                {categoryInfo.name}
+              </a>
+            </li>
+            <li>
+              <svg class="w-4 h-4 text-times-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </li>
+          </>
+        )}
+        <li class="text-times-700 dark:text-times-300 font-medium truncate">
+          Article
+        </li>
+      </ol>
+    </div>
+  </nav>
+
+  <!-- Article Header -->
+  <header class="bg-white dark:bg-times-950 border-b border-times-200 dark:border-times-800">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+      <!-- Category and Source -->
+      <div class="flex items-center space-x-4 mb-6">
+        <span class={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold text-white ${article.sourceColor}`}>
+          <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z" clip-rule="evenodd"></path>
+          </svg>
+          {article.category.toUpperCase()}
+        </span>
+        <span class="text-times-600 dark:text-times-400 font-medium">
+          <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"></path>
+          </svg>
+          {article.source}
+        </span>
+      </div>
+
+      <!-- Title -->
+      <h1 class="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-times-900 dark:text-white leading-tight mb-6">
+        {article.title}
+      </h1>
+
+      <!-- Meta Information -->
+      <div class="flex flex-wrap items-center justify-between gap-4 text-sm text-times-600 dark:text-times-400">
+        <div class="flex items-center space-x-6">
+          {article.author && (
+            <div class="flex items-center">
+              <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+              </svg>
+              <span class="font-medium">By {displayAuthor}</span>
+            </div>
+          )}
+          <time datetime={article.pubDate} class="flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+            </svg>
+            {formattedDate} at {formattedTime}
+          </time>
+          <div class="flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>{article.readingTime} min read</span>
+          </div>
+        </div>
+
+        <!-- Share Buttons -->
+        <div class="flex items-center space-x-3">
+          <span class="text-times-500 dark:text-times-400 font-medium">Share:</span>
+          <button
+            onclick={`shareArticle('twitter', '${article.title}', '${Astro.url.toString()}')`}
+            class="p-2 text-times-600 dark:text-times-400 hover:text-blue-500 transition-colors"
+            aria-label="Share on Twitter"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+            </svg>
+          </button>
+          <button
+            onclick={`shareArticle('facebook', '${article.title}', '${Astro.url.toString()}')`}
+            class="p-2 text-times-600 dark:text-times-400 hover:text-blue-600 transition-colors"
+            aria-label="Share on Facebook"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path>
+            </svg>
+          </button>
+          <button
+            onclick={`shareArticle('linkedin', '${article.title}', '${Astro.url.toString()}')`}
+            class="p-2 text-times-600 dark:text-times-400 hover:text-blue-700 transition-colors"
+            aria-label="Share on LinkedIn"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"></path>
+            </svg>
+          </button>
+          <button
+            onclick={`navigator.clipboard.writeText('${Astro.url.toString()}'); alert('Link copied to clipboard!')`}
+            class="p-2 text-times-600 dark:text-times-400 hover:text-green-600 transition-colors"
+            aria-label="Copy link"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Article Content -->
+  <article class="bg-white dark:bg-times-950">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="lg:grid lg:grid-cols-12 lg:gap-12">
+        <!-- Main Content -->
+        <div class="lg:col-span-8">
+          <div class="py-8 lg:py-12">
+            <!-- Featured Image -->
+            {article.image && (
+              <figure class="mb-8">
+                <img
+                  src={article.image}
+                  alt={article.title}
+                  class="w-full rounded-lg shadow-lg"
+                  loading="eager"
+                />
+                <figcaption class="mt-3 text-sm text-times-500 dark:text-times-400 text-center">
+                  {article.title}
+                </figcaption>
+              </figure>
+            )}
+
+            <!-- Article Description/Summary -->
+            {article.description && (
+              <div class="mb-8 p-6 bg-times-50 dark:bg-times-800 rounded-lg border-l-4 border-times-500">
+                <h2 class="text-lg font-semibold text-times-900 dark:text-white mb-2">Summary</h2>
+                <p class="text-times-700 dark:text-times-300 text-lg leading-relaxed">
+                  {article.description}
+                </p>
+              </div>
+            )}
+
+            <!-- Article Content -->
+            <div class="prose prose-lg dark:prose-invert max-w-none">
+              <div class="text-times-900 dark:text-times-100 leading-relaxed">
+                {article.content ? (
+                  <div class="whitespace-pre-wrap text-lg leading-relaxed">
+                    {article.content}
+                  </div>
+                ) : (
+                  <div class="text-center py-12">
+                    <p class="text-times-600 dark:text-times-400 mb-4">
+                      This article is available at the original source.
+                    </p>
+                    <a
+                      href={article.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-times-900 hover:bg-times-700 focus:outline-none focus:ring-2 focus:ring-times-500 focus:ring-offset-2 transition-colors dark:bg-white dark:text-times-900 dark:hover:bg-times-100"
+                    >
+                      Read Full Article
+                      <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                      </svg>
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <!-- Tags -->
+            {article.tags && article.tags.length > 0 && (
+              <div class="mt-8 pt-6 border-t border-times-200 dark:border-times-800">
+                <div class="flex items-center space-x-2">
+                  <span class="text-sm font-medium text-times-600 dark:text-times-400">Tags:</span>
+                  <div class="flex flex-wrap gap-2">
+                    {article.tags.map((tag) => (
+                      <span class="px-3 py-1 bg-times-100 dark:bg-times-800 text-times-700 dark:text-times-300 rounded-full text-sm">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <!-- Source Attribution -->
+            <div class="mt-8 p-6 bg-times-50 dark:bg-times-800 rounded-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold text-times-900 dark:text-white mb-2">
+                    Original Source
+                  </h3>
+                  <p class="text-times-600 dark:text-times-300">
+                    This article was originally published by <strong>{article.source}</strong>.
+                  </p>
+                </div>
+                <a
+                  href={article.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="px-4 py-2 bg-times-900 text-white rounded-md hover:bg-times-700 transition-colors text-sm font-medium dark:bg-white dark:text-times-900 dark:hover:bg-times-100"
+                >
+                  Visit Source
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="lg:col-span-4">
+          <div class="sticky top-24 py-8 lg:py-12 space-y-8">
+            <!-- Quick Actions -->
+            <div class="bg-times-50 dark:bg-times-800 rounded-lg p-6">
+              <h3 class="text-lg font-display font-bold text-times-900 dark:text-white mb-4">
+                Quick Actions
+              </h3>
+              <div class="space-y-3">
+                <a
+                  href={article.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex items-center w-full px-4 py-3 bg-white dark:bg-times-700 text-times-900 dark:text-white rounded-lg hover:bg-times-100 dark:hover:bg-times-600 transition-colors"
+                >
+                  <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                  </svg>
+                  Read Original Article
+                </a>
+                {categoryInfo && (
+                  <a
+                    href={`/category/${article.category}`}
+                    class="flex items-center w-full px-4 py-3 bg-white dark:bg-times-700 text-times-900 dark:text-white rounded-lg hover:bg-times-100 dark:hover:bg-times-600 transition-colors"
+                  >
+                    <div class={`w-4 h-4 rounded ${categoryInfo.color} mr-3`}></div>
+                    More {categoryInfo.name} News
+                  </a>
+                )}
+                <button
+                  onclick="window.print()"
+                  class="flex items-center w-full px-4 py-3 bg-white dark:bg-times-700 text-times-900 dark:text-white rounded-lg hover:bg-times-100 dark:hover:bg-times-600 transition-colors"
+                >
+                  <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                  </svg>
+                  Print Article
+                </button>
+              </div>
+            </div>
+
+            <!-- Article Info -->
+            <div class="bg-white dark:bg-times-800 rounded-lg border border-times-200 dark:border-times-700 p-6">
+              <h3 class="text-lg font-display font-bold text-times-900 dark:text-white mb-4">
+                Article Info
+              </h3>
+              <dl class="space-y-3 text-sm">
+                <div>
+                  <dt class="text-times-500 dark:text-times-400">Published</dt>
+                  <dd class="text-times-900 dark:text-white font-medium">{formattedDate}</dd>
+                </div>
+                <div>
+                  <dt class="text-times-500 dark:text-times-400">Source</dt>
+                  <dd class="text-times-900 dark:text-white font-medium">{article.source}</dd>
+                </div>
+                {article.author && (
+                  <div>
+                    <dt class="text-times-500 dark:text-times-400">Author</dt>
+                    <dd class="text-times-900 dark:text-white font-medium">{article.author}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt class="text-times-500 dark:text-times-400">Reading Time</dt>
+                  <dd class="text-times-900 dark:text-white font-medium">{article.readingTime} minutes</dd>
+                </div>
+                <div>
+                  <dt class="text-times-500 dark:text-times-400">Category</dt>
+                  <dd class="text-times-900 dark:text-white font-medium">{categoryInfo?.name || article.category}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Related Articles -->
+  {relatedArticles.length > 0 && (
+    <section class="bg-times-50 dark:bg-times-950 border-t border-times-200 dark:border-times-800">
+      <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="text-center mb-8">
+          <h2 class="text-3xl font-display font-bold text-times-900 dark:text-white mb-4">
+            Related Articles
+          </h2>
+          <p class="text-times-600 dark:text-times-400 max-w-2xl mx-auto">
+            Continue reading with these related stories from {categoryInfo?.name || article.category}
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {relatedArticles.map((relatedArticle) => (
+            <ArticleCard
+              article={relatedArticle}
+              showImage={true}
+              showDescription={true}
+            />
+          ))}
+        </div>
+
+        <div class="text-center mt-8">
+          <a
+            href={`/category/${article.category}`}
+            class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-times-900 dark:bg-white dark:text-times-900 hover:bg-times-800 dark:hover:bg-times-100 transition-colors"
+          >
+            View All {categoryInfo?.name || article.category} News
+            <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </section>
+  )}
+</Layout>
+
+<script>
+  // Social sharing functions
+  function shareArticle(platform, title, url) {
+    const encodedUrl = encodeURIComponent(url);
+    const encodedTitle = encodeURIComponent(title);
+
+    let shareUrl = '';
+
+    switch (platform) {
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`;
+        break;
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+        break;
+      case 'linkedin':
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+        break;
+      default:
+        return;
+    }
+
+    window.open(shareUrl, '_blank', 'width=600,height=400');
+  }
+
+  // Print styles
+  const printStyles = `
+    @media print {
+      .no-print { display: none !important; }
+      body { font-size: 12pt; line-height: 1.6; }
+      h1 { font-size: 18pt; }
+      h2 { font-size: 16pt; }
+      h3 { font-size: 14pt; }
+      a { text-decoration: none; color: inherit; }
+      img { max-width: 100%; height: auto; }
+    }
+  `;
+
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = printStyles;
+  document.head.appendChild(styleSheet);
+
+  // Reading progress indicator
+  function updateReadingProgress() {
+    const article = document.querySelector('article');
+    if (!article) return;
+
+    const scrollTop = window.pageYOffset;
+    const articleTop = article.offsetTop;
+    const articleHeight = article.offsetHeight;
+    const windowHeight = window.innerHeight;
+
+    const progress = Math.min(
+      100,
+      Math.max(0, ((scrollTop - articleTop + windowHeight) / articleHeight) * 100)
+    );
+
+    // You could add a progress bar here
+    document.documentElement.style.setProperty('--reading-progress', `${progress}%`);
+  }
+
+  window.addEventListener('scroll', updateReadingProgress);
+  updateReadingProgress();
+</script>
+
+<style>
+  /* Article content styling */
+  .prose {
+    color: inherit;
+  }
+
+  .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+    color: inherit;
+  }
+
+  .prose a {
+    color: rgb(37 99 235);
+    text-decoration: underline;
+  }
+
+  .prose a:hover {
+    color: rgb(29 78 216);
+  }
+
+  .dark .prose a {
+    color: rgb(96 165 250);
+  }
+
+  .dark .prose a:hover {
+    color: rgb(147 197 253);
+  }
+
+  /* Print styles */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+
+    body {
+      font-size: 12pt;
+      line-height: 1.6;
+      color: black !important;
+      background: white !important;
+    }
+
+    .bg-times-50,
+    .bg-times-900,
+    .dark\\:bg-times-950,
+    .dark\\:bg-times-800 {
+      background: white !important;
+    }
+
+    .text-times-900,
+    .text-times-100,
+    .dark\\:text-white {
+      color: black !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      break-after: avoid;
+    }
+
+    img {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  }
+
+  /* Sticky positioning */
+  @media (min-width: 1024px) {
+    .sticky {
+      position: sticky;
+      top: 6rem;
+    }
+  }
+</style>

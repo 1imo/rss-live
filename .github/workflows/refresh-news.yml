@@ -1,0 +1,182 @@
+name: Refresh News and Deploy
+
+on:
+  # Run every 30 minutes during business hours
+  schedule:
+    - cron: '*/30 6-22 * * *'  # Every 30 minutes from 6 AM to 10 PM UTC
+    - cron: '0 */2 22-6 * * *'  # Every 2 hours from 10 PM to 6 AM UTC
+  
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      force_refresh:
+        description: 'Force refresh even if cache is valid'
+        required: false
+        default: 'false'
+        type: boolean
+
+  # Run on push to main branch
+  push:
+    branches: [ main ]
+  
+  # Run on pull request to main branch
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  refresh-and-deploy:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Create cache directory
+        run: mkdir -p .cache/news
+        
+      - name: Restore news cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/news
+          key: news-cache-${{ github.run_number }}
+          restore-keys: |
+            news-cache-
+            
+      - name: Refresh news articles
+        run: |
+          node -e "
+          import { newsService } from './src/services/NewsService.js';
+          
+          async function refreshNews() {
+            try {
+              console.log('Starting news refresh...');
+              const forceRefresh = process.env.FORCE_REFRESH === 'true' || '${{ inputs.force_refresh }}' === 'true';
+              const articles = await newsService.refreshArticles(forceRefresh);
+              console.log(\`Successfully refreshed \${articles.length} articles\`);
+              
+              // Log cache stats
+              const cacheInfo = await newsService.getCacheInfo();
+              console.log('Cache info:', JSON.stringify(cacheInfo, null, 2));
+            } catch (error) {
+              console.error('Error refreshing news:', error);
+              process.exit(1);
+            }
+          }
+          
+          refreshNews();
+          "
+        env:
+          FORCE_REFRESH: ${{ inputs.force_refresh }}
+          
+      - name: Verify news data
+        run: |
+          if [ ! -f ".cache/news/articles.json" ]; then
+            echo "❌ Articles cache not found!"
+            exit 1
+          fi
+          
+          ARTICLE_COUNT=$(node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('.cache/news/articles.json', 'utf8'));
+            console.log(data.articles?.length || 0);
+          ")
+          
+          echo "📰 Found $ARTICLE_COUNT articles in cache"
+          
+          if [ "$ARTICLE_COUNT" -lt 10 ]; then
+            echo "⚠️ Warning: Low article count ($ARTICLE_COUNT). This might indicate an issue with RSS feeds."
+          else
+            echo "✅ Article count looks good"
+          fi
+          
+      - name: Build Astro site
+        run: npm run build
+        
+      - name: Verify sitemap generation
+        run: |
+          if [ ! -f "dist/sitemap-index.xml" ]; then
+            echo "❌ Sitemap not generated!"
+            exit 1
+          fi
+          
+          SITEMAP_URLS=$(grep -c "<url>" dist/sitemap-*.xml || echo "0")
+          echo "🗺️ Sitemap contains $SITEMAP_URLS URLs"
+          
+          if [ "$SITEMAP_URLS" -lt 50 ]; then
+            echo "⚠️ Warning: Low URL count in sitemap ($SITEMAP_URLS)"
+          else
+            echo "✅ Sitemap generation looks good"
+          fi
+          
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/configure-pages@v4
+        
+      - name: Upload artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+          
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        id: deployment
+        uses: actions/deploy-pages@v4
+        
+      - name: Update deployment status
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          echo "🚀 Deployment completed successfully!"
+          echo "📊 Site URL: ${{ steps.deployment.outputs.page_url }}"
+          
+      - name: Cache news data for next run
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/news
+          key: news-cache-${{ github.run_number }}
+          
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ News refresh and deployment completed successfully!"
+          else
+            echo "❌ Job failed with status: ${{ job.status }}"
+          fi
+
+  # Health check job to monitor the news fetching
+  health-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    needs: refresh-and-deploy
+    
+    steps:
+      - name: Check deployment health
+        run: |
+          echo "🔍 Running post-deployment health checks..."
+          
+          # You can add health checks here, such as:
+          # - Checking if the site is accessible
+          # - Verifying RSS feed parsing
+          # - Monitoring for errors
+          
+          echo "✅ Health check completed"

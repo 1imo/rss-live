@@ -1,0 +1,129 @@
+---
+import type { Article } from '../types';
+import { getCategoryColor } from '../config/newsCategories';
+
+interface Props {
+  article: Article;
+  featured?: boolean;
+  showImage?: boolean;
+  showDescription?: boolean;
+  className?: string;
+}
+
+const {
+  article,
+  featured = false,
+  showImage = true,
+  showDescription = true,
+  className = ''
+} = Astro.props;
+
+// Format publication date
+const pubDate = new Date(article.pubDate);
+const formattedDate = pubDate.toLocaleDateString('en-US', {
+  month: 'short',
+  day: 'numeric'
+});
+const formattedTime = pubDate.toLocaleTimeString('en-US', {
+  hour: 'numeric',
+  minute: '2-digit'
+});
+
+// Get category color
+const categoryColor = getCategoryColor(article.category);
+
+// Determine image size based on featured status
+const imageClasses = featured
+  ? "aspect-[16/9] lg:aspect-[16/10]"
+  : "aspect-video";
+---
+
+<article class={`group ${className}`}>
+  <div class="h-full flex flex-col">
+    {showImage && article.image && (
+      <div class={`${imageClasses} mb-4 overflow-hidden rounded-lg`}>
+        <img
+          src={article.image}
+          alt={article.title}
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
+        />
+      </div>
+    )}
+
+    <div class="flex-1 space-y-3">
+      <!-- Category and source -->
+      <div class="flex items-center space-x-3 text-sm">
+        <span class={`inline-flex items-center px-2 py-1 rounded text-xs font-bold text-white ${article.sourceColor}`}>
+          <svg class="w-3 h-3 mr-1 fill-white" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z" clip-rule="evenodd"></path>
+          </svg>
+          {article.category.toUpperCase()}
+        </span>
+        <span class="text-times-500 dark:text-times-400 font-medium">
+          <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd"></path>
+          </svg>
+          {article.source}
+        </span>
+      </div>
+
+      <!-- Title -->
+      <h3 class={`font-display font-semibold text-times-900 dark:text-white leading-tight line-clamp-3 ${featured ? 'text-2xl lg:text-3xl' : 'text-xl'}`}>
+        <a
+          href={`/news/${article.slug}`}
+          class="hover:text-times-700 dark:hover:text-times-300 transition-colors"
+        >
+          {article.title}
+        </a>
+      </h3>
+
+      <!-- Description -->
+      {showDescription && article.description && (
+        <p class="text-times-600 dark:text-times-400 leading-relaxed line-clamp-3">
+          {article.description}
+        </p>
+      )}
+
+      <!-- Meta info -->
+      <div class="flex items-center justify-between pt-4 text-sm">
+        <time class="text-times-500 dark:text-times-400">
+          <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+          </svg>
+          {formattedDate} at {formattedTime}
+        </time>
+        <span class="text-times-500 dark:text-times-400">
+          <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          {article.readingTime} min read
+        </span>
+      </div>
+    </div>
+  </div>
+</article>
+
+<style>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .group:hover img {
+    transform: scale(1.05);
+  }
+
+  .group img {
+    transition: transform 0.3s ease-in-out;
+  }
+</style>

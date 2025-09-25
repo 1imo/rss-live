@@ -1,0 +1,430 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+import { newsService } from '../../services/NewsService';
+import { getCategoryById, newsCategories } from '../../config/newsCategories';
+
+// Generate static paths for all categories
+export async function getStaticPaths() {
+  return newsCategories.map((cat) => ({
+    params: { category: cat.id }
+  }));
+}
+
+// Get category from URL parameters
+const { category } = Astro.params;
+
+// Validate category exists
+const categoryInfo = getCategoryById(category);
+if (!categoryInfo) {
+  return Astro.redirect('/404');
+}
+
+// Get articles for this category
+const { articles, totalArticles } = await newsService.getArticlesPaginated(1, 24, category);
+
+// Get related categories for sidebar
+const relatedCategories = newsCategories.filter(cat => cat.id !== category).slice(0, 5);
+
+const pageTitle = `${categoryInfo.name} News — NewsHub`;
+const pageDescription = `Latest ${categoryInfo.name.toLowerCase()} news and updates. ${categoryInfo.description}`;
+---
+
+<Layout
+  title={pageTitle}
+  description={pageDescription}
+>
+  <!-- Category Hero Section -->
+  <section class="bg-white dark:bg-times-950 border-b border-times-200 dark:border-times-800">
+    <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="flex items-center mb-4">
+            <div class={`w-12 h-12 rounded-lg ${categoryInfo.color} flex items-center justify-center text-white mr-4`}>
+              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-4xl lg:text-5xl font-display font-bold text-times-900 dark:text-white">
+                {categoryInfo.name}
+              </h1>
+              <p class="text-lg text-times-600 dark:text-times-400 mt-2">
+                {categoryInfo.description}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hidden md:block">
+          <div class="text-right">
+            <div class="text-3xl font-display font-bold text-times-900 dark:text-white">
+              {totalArticles.toLocaleString()}
+            </div>
+            <div class="text-sm text-times-500 dark:text-times-400">
+              {totalArticles === 1 ? 'Article' : 'Articles'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Stats Bar -->
+      <div class="mt-8 hidden md:flex items-center justify-between py-4 border-t border-times-200 dark:border-times-800">
+        <div class="flex items-center space-x-6 text-sm text-times-600 dark:text-times-400">
+          <div>
+            <span class="font-semibold">{totalArticles}</span> total articles
+          </div>
+          <div>
+            Updated <span class="font-semibold">continuously</span>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+          <!-- Sort Options -->
+          <select
+            id="sort-select"
+            class="px-3 py-2 border border-times-300 dark:border-times-600 rounded-md bg-white dark:bg-times-800 text-times-900 dark:text-white text-sm focus:ring-2 focus:ring-times-500 focus:border-transparent"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="source">By Source</option>
+          </select>
+
+          <!-- View Toggle -->
+          <div class="flex items-center bg-times-100 dark:bg-times-800 rounded-md p-1">
+            <button
+              id="grid-view"
+              class="p-2 rounded text-times-600 dark:text-times-400 hover:text-times-900 dark:hover:text-white focus:outline-none focus:text-times-900 dark:focus:text-white"
+              aria-label="Grid view"
+            >
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+              </svg>
+            </button>
+            <button
+              id="list-view"
+              class="p-2 rounded text-times-600 dark:text-times-400 hover:text-times-900 dark:hover:text-white focus:outline-none focus:text-times-900 dark:focus:text-white"
+              aria-label="List view"
+            >
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <section class="bg-white dark:bg-times-950">
+    <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="lg:grid lg:grid-cols-4 lg:gap-12">
+        <!-- Articles -->
+        <div class="lg:col-span-3">
+          {articles.length > 0 ? (
+            <>
+              <!-- Featured Article (First one, larger) -->
+              {articles[0] && (
+                <div class="mb-12 pb-8 border-b border-times-200 dark:border-times-800">
+                  <div class="flex items-center mb-4">
+                    <span class="px-3 py-1 bg-times-100 dark:bg-times-800 text-times-700 dark:text-times-300 rounded-full text-sm font-medium">
+                      Featured Story
+                    </span>
+                  </div>
+                  <ArticleCard
+                    article={articles[0]}
+                    featured={true}
+                    showImage={true}
+                    showDescription={true}
+                  />
+                </div>
+              )}
+
+              <!-- Articles Grid -->
+              <div id="articles-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                {articles.slice(1).map((article) => (
+                  <ArticleCard
+                    article={article}
+                    showImage={true}
+                    showDescription={true}
+                  />
+                ))}
+              </div>
+
+              <!-- Load More Button -->
+              <div class="text-center mt-12">
+                <button
+                  id="load-more-btn"
+                  class="px-8 py-3 bg-times-900 dark:bg-white text-white dark:text-times-900 font-semibold rounded-lg hover:bg-times-800 dark:hover:bg-times-100 transition-colors focus:outline-none focus:ring-2 focus:ring-times-500 focus:ring-offset-2"
+                >
+                  Load More Articles
+                </button>
+              </div>
+            </>
+          ) : (
+            <!-- No Articles -->
+            <div class="text-center py-16">
+              <div class={`w-16 h-16 rounded-full ${categoryInfo.color} flex items-center justify-center text-white mx-auto mb-6`}>
+                <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z" clip-rule="evenodd"></path>
+                </svg>
+              </div>
+              <h2 class="text-2xl font-display font-bold text-times-900 dark:text-white mb-4">
+                No {categoryInfo.name.toLowerCase()} articles yet
+              </h2>
+              <p class="text-times-600 dark:text-times-400 mb-8 max-w-md mx-auto">
+                We're working on bringing you the latest {categoryInfo.name.toLowerCase()} news. Check back soon or explore other categories.
+              </p>
+              <a
+                href="/categories"
+                class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-times-900 hover:bg-times-700 focus:outline-none focus:ring-2 focus:ring-times-500 focus:ring-offset-2 transition-colors dark:bg-times-100 dark:text-times-900 dark:hover:bg-times-300"
+              >
+                Browse All Categories
+                <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </a>
+            </div>
+          )}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="lg:col-span-1 mt-12 lg:mt-0">
+          <div class="sticky top-24 space-y-8">
+            <!-- Category Quick Info -->
+            <div class="bg-times-50 dark:bg-times-800 rounded-lg p-6">
+              <h3 class="text-lg font-display font-bold text-times-900 dark:text-white mb-4">
+                About {categoryInfo.name}
+              </h3>
+              <p class="text-times-600 dark:text-times-300 text-sm leading-relaxed mb-4">
+                {categoryInfo.description}
+              </p>
+              <div class="space-y-2 text-sm hidden md:block">
+                <div class="flex justify-between">
+                  <span class="text-times-500 dark:text-times-400">Total articles:</span>
+                  <span class="font-semibold text-times-900 dark:text-white">{totalArticles}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-times-500 dark:text-times-400">Updated:</span>
+                  <span class="font-semibold text-times-900 dark:text-white">Continuously</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Related Categories -->
+            {relatedCategories.length > 0 && (
+              <div class="bg-white dark:bg-times-800 rounded-lg border border-times-200 dark:border-times-700 p-6">
+                <h3 class="text-lg font-display font-bold text-times-900 dark:text-white mb-4">
+                  Related Sections
+                </h3>
+                <div class="space-y-3">
+                  {relatedCategories.map((cat) => (
+                    <a
+                      href={`/category/${cat.id}`}
+                      class="flex items-center p-3 rounded-lg hover:bg-times-50 dark:hover:bg-times-700 transition-colors group"
+                    >
+                      <div class={`w-8 h-8 rounded ${cat.color} flex items-center justify-center text-white mr-3`}>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z" clip-rule="evenodd"></path>
+                        </svg>
+                      </div>
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-times-900 dark:text-white group-hover:text-times-700 dark:group-hover:text-times-300 transition-colors">
+                          {cat.name}
+                        </div>
+                      </div>
+                      <svg class="w-4 h-4 text-times-400 group-hover:text-times-700 dark:group-hover:text-times-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <!-- Newsletter Signup -->
+            <div class="bg-gradient-to-br from-times-800 to-times-900 rounded-lg p-6 text-white dark:from-times-100 dark:to-times-200 dark:text-times-900">
+              <h3 class="text-lg font-display font-bold mb-3">
+                Stay Updated
+              </h3>
+              <p class="text-times-100 text-sm mb-4 dark:text-times-700">
+                Get {categoryInfo.name.toLowerCase()} news delivered to your inbox.
+              </p>
+              <form class="space-y-3">
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  class="w-full px-3 py-2 text-times-900 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-times-300"
+                  required
+                />
+                <button
+                  type="submit"
+                  class="w-full px-4 py-2 bg-white text-times-700 font-medium rounded-md text-sm hover:bg-times-50 transition-colors focus:outline-none focus:ring-2 focus:ring-times-300 dark:bg-times-800 dark:text-times-100 dark:hover:bg-times-700"
+                >
+                  Subscribe
+                </button>
+              </form>
+              <p class="text-xs text-times-200 mt-3 dark:text-times-600">
+                Free forever. No spam. Unsubscribe anytime.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  // Category page interactivity
+  let currentPage = 1;
+  let isLoading = false;
+  const category = window.location.pathname.split('/').pop();
+
+  // Load more articles
+  const loadMoreBtn = document.getElementById('load-more-btn');
+  const articlesGrid = document.getElementById('articles-grid');
+
+  loadMoreBtn?.addEventListener('click', async () => {
+    if (isLoading) return;
+
+    isLoading = true;
+    loadMoreBtn.textContent = 'Loading...';
+    loadMoreBtn.disabled = true;
+
+    try {
+      currentPage++;
+      const response = await fetch(`/api/articles?category=${category}&page=${currentPage}`);
+      const data = await response.json();
+
+      if (data.success && data.articles.length > 0) {
+        // Add new articles to the grid
+        data.articles.forEach(article => {
+          const articleElement = createArticleElement(article);
+          articlesGrid?.appendChild(articleElement);
+        });
+
+        // Hide load more button if no more articles
+        if (!data.hasNextPage) {
+          loadMoreBtn.style.display = 'none';
+        }
+      } else {
+        loadMoreBtn.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Error loading more articles:', error);
+    } finally {
+      isLoading = false;
+      loadMoreBtn.textContent = 'Load More Articles';
+      loadMoreBtn.disabled = false;
+    }
+  });
+
+  // Newsletter form submission
+  const newsletterForm = document.querySelector('form');
+  newsletterForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const email = formData.get('email');
+
+    try {
+      const response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'subscribe', email }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Successfully subscribed to newsletter!');
+        e.target.reset();
+      } else {
+        alert(result.message || 'Subscription failed');
+      }
+    } catch (error) {
+      console.error('Newsletter subscription error:', error);
+      alert('An error occurred. Please try again.');
+    }
+  });
+
+  // Create article element helper function
+  function createArticleElement(article) {
+    const articleDiv = document.createElement('div');
+    articleDiv.className = 'group';
+
+    articleDiv.innerHTML = `
+      <article class="h-full flex flex-col">
+        ${article.image ? `
+          <div class="aspect-video mb-4 overflow-hidden rounded-lg">
+            <img
+              src="${article.image}"
+              alt="${article.title}"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          </div>
+        ` : ''}
+        <div class="flex-1 space-y-3">
+          <div class="flex items-center space-x-3 text-sm">
+            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-bold text-white ${article.sourceColor}">
+              ${article.category.toUpperCase()}
+            </span>
+            <span class="text-times-500 dark:text-times-400 font-medium">
+              ${article.source}
+            </span>
+          </div>
+          <h3 class="text-xl font-display font-semibold text-times-900 dark:text-white leading-tight">
+            <a href="/news/${article.slug}" class="hover:text-times-700 dark:hover:text-times-300 transition-colors line-clamp-3">
+              ${article.title}
+            </a>
+          </h3>
+          ${article.description ? `
+            <p class="text-times-600 dark:text-times-400 leading-relaxed line-clamp-3">
+              ${article.description}
+            </p>
+          ` : ''}
+          <div class="flex items-center justify-between pt-4 text-sm">
+            <time class="text-times-500 dark:text-times-400">
+              ${new Date(article.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${new Date(article.pubDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+            </time>
+            <span class="text-times-500 dark:text-times-400">
+              ${article.readingTime} min read
+            </span>
+          </div>
+        </div>
+      </article>
+    `;
+
+    return articleDiv;
+  }
+</script>
+
+<style>
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .group:hover img {
+    transform: scale(1.05);
+  }
+
+  .group img {
+    transition: transform 0.3s ease-in-out;
+  }
+
+  /* Sticky sidebar positioning */
+  @media (min-width: 1024px) {
+    .sticky {
+      position: sticky;
+      top: 6rem;
+    }
+  }
+</style>

@@ -1,5 +1,13 @@
-// @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig } from "astro/config";
+import tailwind from "@astrojs/tailwind";
+import sitemap from "@astrojs/sitemap";
+import node from "@astrojs/node";
 
-// https://astro.build/config
-export default defineConfig({});
+export default defineConfig({
+  site: process.env.SITE_URL || "http://localhost:4321",
+  integrations: [tailwind(), sitemap()],
+  output: "server",
+  adapter: node({
+    mode: "standalone"
+  }),
+});
