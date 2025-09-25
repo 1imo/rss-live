@@ -414,6 +414,14 @@ export function parseRSSItem(
   // Enhanced content for news ranking
   const enhancedContent = enhanceContentForNews(content, title, description, source);
   
+  // Validate image URL before adding to article
+  const validImageUrl = imageUrl && 
+                        typeof imageUrl === 'string' && 
+                        imageUrl.trim() !== '' && 
+                        imageUrl !== 'undefined' && 
+                        imageUrl !== 'null' &&
+                        imageUrl.startsWith('http') ? imageUrl : undefined;
+
   const article: Article = {
     id: String(id),
     title,
@@ -426,7 +434,7 @@ export function parseRSSItem(
     sourceColor: source.color,
     category: source.category,
     slug,
-    image: imageUrl,
+    image: validImageUrl,
     tags: tags.filter((tag) => tag && tag.length > 0),
     readingTime: calculateReadingTime(enhancedContent),
     // News-specific metadata

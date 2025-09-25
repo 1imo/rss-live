@@ -49,12 +49,27 @@ export const GET: APIRoute = async ({ site }) => {
   <!-- News Articles -->
   ${articles.filter(article => {
     // Filter out articles that might cause issues
-    return article && 
-           article.slug && 
-           article.title && 
-           article.pubDate &&
-           typeof article.slug === 'string' &&
-           typeof article.title === 'string';
+    if (!article || !article.slug || !article.title || !article.pubDate) return false;
+    if (typeof article.slug !== 'string' || typeof article.title !== 'string') return false;
+    
+    // Filter out articles with problematic images
+    if (article.image) {
+      if (typeof article.image !== 'string') return false;
+      if (article.image.trim() === '') return false;
+      if (article.image === 'undefined' || article.image === 'null') return false;
+      if (article.image.includes('undefined') || article.image.includes('null')) return false;
+      if (!article.image.startsWith('http')) return false;
+      
+      // Test if it's a valid URL
+      try {
+        const url = new URL(article.image);
+        if (!url.hostname || url.hostname === 'undefined') return false;
+      } catch {
+        return false;
+      }
+    }
+    
+    return true;
   }).map(article => {
     try {
       const articleDate = new Date(article.pubDate);
