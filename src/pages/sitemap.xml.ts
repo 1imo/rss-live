@@ -3,7 +3,7 @@ import { newsService } from '../services/NewsService';
 import { newsCategories } from '../config/newsCategories';
 
 export const GET: APIRoute = async ({ site }) => {
-  const siteUrl = site?.toString() || process.env.SITE_URL || 'http://localhost:4321';
+  const siteUrl = site?.toString() || process.env.SITE_URL || 'https://sharedmedia.live/';
   
   try {
     // Get all articles
@@ -63,9 +63,21 @@ export const GET: APIRoute = async ({ site }) => {
         .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // Remove invalid XML characters
     };
     
+    // Validate image URL
+    const isValidUrl = (url: string) => {
+      if (!url || typeof url !== 'string') return false;
+      try {
+        new URL(url);
+        return url.startsWith('http://') || url.startsWith('https://');
+      } catch {
+        return false;
+      }
+    };
+    
     const safeTitle = escapeXml(article.title);
     const safeKeywords = escapeXml(article.newsKeywords?.join(', ') || article.tags.join(', '));
-    const safeImageUrl = article.image ? escapeXml(article.image) : '';
+    const hasValidImage = article.image && isValidUrl(article.image);
+    const safeImageUrl = hasValidImage && article.image ? escapeXml(article.image) : '';
     
     return `
   <url>
@@ -73,7 +85,7 @@ export const GET: APIRoute = async ({ site }) => {
     <changefreq>${isRecent ? 'hourly' : 'daily'}</changefreq>
     <priority>${isRecent ? '0.9' : '0.7'}</priority>
     <lastmod>${articleDate.toISOString()}</lastmod>
-    ${article.image && safeImageUrl ? `
+    ${hasValidImage ? `
     <image:image>
       <image:loc>${safeImageUrl}</image:loc>
       <image:caption>${safeTitle}</image:caption>
