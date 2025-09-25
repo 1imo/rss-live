@@ -47,49 +47,70 @@ export const GET: APIRoute = async ({ site }) => {
   </url>`).join('')}
   
   <!-- News Articles -->
-  ${articles.map(article => {
-    const articleDate = new Date(article.pubDate);
-    const isRecent = Date.now() - articleDate.getTime() < 48 * 60 * 60 * 1000; // 48 hours
-    
-    // Proper XML escaping function
-    const escapeXml = (str: string) => {
-      if (!str) return '';
-      return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;')
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // Remove invalid XML characters
-    };
-    
-    // Validate image URL
-    const isValidUrl = (url: string) => {
-      if (!url || typeof url !== 'string') return false;
-      try {
-        new URL(url);
-        return url.startsWith('http://') || url.startsWith('https://');
-      } catch {
-        return false;
-      }
-    };
-    
-    const safeTitle = escapeXml(article.title);
-    const safeKeywords = escapeXml(article.newsKeywords?.join(', ') || article.tags.join(', '));
-    const hasValidImage = article.image && isValidUrl(article.image);
-    const safeImageUrl = hasValidImage && article.image ? escapeXml(article.image) : '';
-    
-    return `
-  <url>
-    <loc>${siteUrl}news/${article.slug}</loc>
-    <changefreq>${isRecent ? 'hourly' : 'daily'}</changefreq>
-    <priority>${isRecent ? '0.9' : '0.7'}</priority>
-    <lastmod>${articleDate.toISOString()}</lastmod>
-    ${hasValidImage ? `
+  ${articles.filter(article => {
+    // Filter out articles that might cause issues
+    return article && 
+           article.slug && 
+           article.title && 
+           article.pubDate &&
+           typeof article.slug === 'string' &&
+           typeof article.title === 'string';
+  }).map(article => {
+    try {
+      const articleDate = new Date(article.pubDate);
+      const isRecent = Date.now() - articleDate.getTime() < 48 * 60 * 60 * 1000; // 48 hours
+      
+      // Proper XML escaping function
+      const escapeXml = (str: string | undefined) => {
+        if (!str || typeof str !== 'string') return '';
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&apos;')
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // Remove invalid XML characters
+      };
+      
+      // Validate image URL more strictly
+      const isValidImageUrl = (url: any) => {
+        if (!url || typeof url !== 'string' || url.trim() === '') return false;
+        if (url === 'undefined' || url === 'null') return false;
+        try {
+          const parsed = new URL(url.trim());
+          return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && 
+                 parsed.hostname && 
+                 parsed.hostname !== 'undefined' &&
+                 url.includes('.') && 
+                 !url.includes('undefined');
+        } catch {
+          return false;
+        }
+      };
+      
+      const safeTitle = escapeXml(article.title);
+      const safeKeywords = escapeXml(article.newsKeywords?.join(', ') || article.tags?.join(', ') || '');
+      const hasValidImage = article.image && isValidImageUrl(article.image);
+      
+      // Additional validation before using image
+      let imageSection = '';
+      if (hasValidImage && article.image) {
+        const safeImageUrl = escapeXml(article.image);
+        if (safeImageUrl && safeImageUrl !== '' && !safeImageUrl.includes('undefined')) {
+          imageSection = `
     <image:image>
       <image:loc>${safeImageUrl}</image:loc>
       <image:caption>${safeTitle}</image:caption>
-    </image:image>` : ''}
+    </image:image>`;
+        }
+      }
+      
+      return `
+  <url>
+    <loc>${siteUrl}news/${escapeXml(article.slug)}</loc>
+    <changefreq>${isRecent ? 'hourly' : 'daily'}</changefreq>
+    <priority>${isRecent ? '0.9' : '0.7'}</priority>
+    <lastmod>${articleDate.toISOString()}</lastmod>${imageSection}
     <news:news>
       <news:publication>
         <news:name>NewsHub</news:name>
@@ -100,7 +121,11 @@ export const GET: APIRoute = async ({ site }) => {
       <news:keywords>${safeKeywords}</news:keywords>
     </news:news>
   </url>`;
-  }).join('')}
+    } catch (error) {
+      console.error('Error processing article for sitemap:', article.id || 'unknown', error);
+      return ''; // Skip problematic articles
+    }
+  }).filter(Boolean).join('')}
 </urlset>`;
 
     return new Response(sitemap, {
