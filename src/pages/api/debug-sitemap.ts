@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { newsService } from '../services/NewsService';
+import { newsService } from '../../services/NewsService';
 
 export const GET: APIRoute = async () => {
   try {
