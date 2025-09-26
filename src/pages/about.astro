@@ -1,0 +1,105 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const siteTitle = "About NewsHub - Real-Time News Aggregation";
+const siteDescription = "NewsHub is a comprehensive news aggregation platform delivering real-time updates from trusted sources across technology, sports, business, politics, and global events.";
+const authorName = "Timo Hoyland";
+const authorUrl = "https://www.linkedin.com/in/timo-hoyland/";
+---
+
+<Layout title={siteTitle} description={siteDescription}>
+  <Fragment slot="head">
+    <!-- Author Person Schema -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Timo Hoyland",
+        "url": "https://www.linkedin.com/in/timo-hoyland/",
+        "sameAs": [
+          "https://www.linkedin.com/in/timo-hoyland/"
+        ],
+        "knowsAbout": [
+          "Software Development",
+          "News",
+          "Technology",
+          "Web Development"
+        ],
+        "jobTitle": "Software Developer",
+        "worksFor": {
+          "@type": "Organization",
+          "name": "NewsHub"
+        }
+      }
+    </script>
+
+    <!-- Website/Organization Schema -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "NewsHub",
+        "url": "https://sharedmedia.live",
+        "description": "Real-time news aggregation platform delivering trusted news from multiple sources",
+        "author": {
+          "@type": "Person",
+          "name": "Timo Hoyland",
+          "url": "https://www.linkedin.com/in/timo-hoyland/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "NewsHub",
+          "url": "https://sharedmedia.live"
+        },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://sharedmedia.live/search?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
+
+    <meta name="author" content="Timo Hoyland">
+    <link rel="author" href="https://www.linkedin.com/in/timo-hoyland/">
+  </Fragment>
+
+  <main class="container mx-auto px-4 py-8 max-w-4xl">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">About NewsHub</h1>
+    
+    <div class="prose dark:prose-invert max-w-none">
+      <p class="text-lg text-gray-700 dark:text-gray-300 mb-6">
+        NewsHub operates as a news aggregation service, collecting and organizing content from established news sources to provide readers with timely access to current events across technology, business, sports, politics, and international affairs.
+      </p>
+
+      <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Editorial Approach</h2>
+      <p class="text-gray-700 dark:text-gray-300 mb-6">
+        We maintain strict editorial standards by sourcing content exclusively from established news organizations with proven track records of journalistic integrity. Each article retains full attribution to its original publisher, with direct links to source material to preserve context and enable readers to access complete reporting.
+      </p>
+
+      <h2 class="text-2xl font-semibent text-gray-900 dark:text-white mb-4">Content Standards</h2>
+      <p class="text-gray-700 dark:text-gray-300 mb-4">
+        All content is automatically sourced from RSS feeds provided by recognized news organizations. We do not alter, edit, or republish original reporting. Our role is limited to aggregation, categorization, and presentation of headlines and summaries as provided by the original publishers.
+      </p>
+      
+      <p class="text-gray-700 dark:text-gray-300 mb-6">
+        Content updates occur continuously throughout the day as new stories are published by our source outlets. We maintain no editorial position on the content we aggregate and encourage readers to visit source publications for complete coverage and analysis.
+      </p>
+
+      <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Technical Infrastructure</h2>
+      <p class="text-gray-700 dark:text-gray-300 mb-6">
+        The platform operates on modern web infrastructure designed for performance and reliability. Automated systems monitor source feeds and update content indexes to ensure timely delivery of breaking news. The service is optimized for fast loading across desktop and mobile devices.
+      </p>
+
+      <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Source Attribution</h2>
+      <p class="text-gray-700 dark:text-gray-300 mb-6">
+        Every article includes clear attribution to its original publisher, publication date, and direct linking to the source material. We respect copyright and intellectual property rights of all content creators and maintain compliance with fair use principles governing news aggregation services.
+      </p>
+
+      <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          NewsHub is operated as an independent news aggregation service. We are not affiliated with any of the news organizations whose content we aggregate.
+        </p>
+      </div>
+    </div>
+  </main>
+</Layout>
